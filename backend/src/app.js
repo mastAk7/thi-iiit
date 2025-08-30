@@ -11,46 +11,81 @@ const session = require('express-session');
 const passport = require('passport');
 const setupPassport = require('./config/passport');
 const rateLimit = require('express-rate-limit');
+// const MongoStore = require('connect-mongo');   // optional: use this in prod
 const { notFound, errorHandler } = require('./middlewares/error');
 
-
 const app = express();
+
+/** ---- REQUIRED when behind Railway/any proxy (affects secure cookies) ---- */
+app.set('trust proxy', 1);
+
 app.use(helmet());
-// Configure CORS to return an explicit origin (required when credentials=true).
-// Accept a comma-separated list in CORS_ORIGIN, e.g. "http://localhost:5173,http://localhost:3000"
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map(s => s.trim());
+
+/** ---- CORS ----
+ * Set CORS_ORIGIN to a comma-separated list, e.g.:
+ *   https://thi-iiit.vercel.app,http://localhost:5173
+ */
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map(s => s.trim());
+
 app.use(cors({
-	origin: function (origin, callback) {
-		// allow requests with no origin (like mobile apps or curl)
-		if (!origin) return callback(null, true);
-		if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) return callback(null, true);
-		return callback(new Error('CORS policy: origin not allowed'));
-	},
-	credentials: true,
+  origin(origin, cb) {
+    if (!origin) return cb(null, true); // curl/postman
+    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error('CORS policy: origin not allowed'));
+  },
+  credentials: true,
 }));
+
+// Good preflight behavior
+app.options('*', cors({
+  origin(origin, cb) {
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error('CORS policy: origin not allowed'));
+  },
+  credentials: true,
+}));
+
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
-// session for passport (used only for OAuth flows)
-app.use(session({ secret: process.env.SESSION_SECRET || 'keyboard cat', resave: false, saveUninitialized: false }));
+
+/** ---- Session for Passport (cross-site cookie settings) ---- */
+const prod = process.env.NODE_ENV === 'production';
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'keyboard cat',
+  resave: false,
+  saveUninitialized: false,
+  // store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }), // <— enable in prod
+  cookie: {
+    httpOnly: true,
+    secure: prod,                  // HTTPS on Railway
+    sameSite: prod ? 'none' : 'lax', // required for cross-site cookies (Vercel -> Railway)
+    maxAge: 1000 * 60 * 60 * 24 * 7,
+  },
+}));
+
 app.use(passport.initialize());
 app.use(passport.session());
 setupPassport();
 
-// apply a conservative rate limiter to auth endpoints
+/** ---- Rate limit auth endpoints ---- */
 const authLimiter = rateLimit({ windowMs: 60 * 1000, max: 10 });
 app.use('/api/auth', authLimiter);
 
 app.use(compression());
-if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
+if (!prod) app.use(morgan('dev'));
 
+/** ---- Health check (Railway) ---- */
+app.get('/api/health', (_req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
-app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
+/** ---- Routes ---- */
 app.use('/api/auth', authRoutes);
 app.use('/api', analyzeRoutes);
 
-
+/** ---- Errors ---- */
 app.use(notFound);
 app.use(errorHandler);
-
 
 module.exports = app;

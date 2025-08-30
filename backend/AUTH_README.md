@@ -1,10 +1,10 @@
 # Server
-PORT=4000
-NODE_ENV=development
-CORS_ORIGIN=http://localhost:5173
-# Database (optional for now; used to persist runs)
-MONGODB_URI=mongodb://127.0.0.1:27017/hallucination
 # AI service wiring
+# Database (optional for now; used to persist runs)
+PORT=4000
+NODE_ENV=production
+CORS_ORIGIN=https://thi-iiit.vercel.app/
+MONGODB_URI=mongodb+srv://aryankansal15_db_user:IckSDMSivItaAy8b@cluster0.ihklsct.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
 AI_MODE=mock # mock | live
 AI_BASE_URL=http://localhost:5001
 AI_TIMEOUT_MS=15000
@@ -12,7 +12,7 @@ JWT_SECRET=important_hack
 GOOGLE_CLIENT_ID=1072255037759-l2i64f20fjo57jsaq8gq1u1qti6ecppm.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=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
 GOOGLE_CALLBACK=http://localhost:4000/api/auth/google/callback
-CLIENT_POST_LOGIN=http://localhost:5173
+CLIENT_POST_LOGIN=https://thi-iiit.vercel.app/
 Summary
 
 This repo now contains a basic authentication implementation supporting:
