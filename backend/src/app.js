@@ -70,6 +70,11 @@ app.use(passport.initialize());
 app.use(passport.session());
 setupPassport();
 
+app.get('/', (_req, res) => {
+  res.send('Server is running ✅');
+});
+
+
 /** ---- Rate limit auth endpoints ---- */
 const authLimiter = rateLimit({ windowMs: 60 * 1000, max: 10 });
 app.use('/api/auth', authLimiter);
