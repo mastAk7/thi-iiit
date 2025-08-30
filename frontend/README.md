@@ -1,3 +1,4 @@
+VITE_API_BASE=http://localhost:4000
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
